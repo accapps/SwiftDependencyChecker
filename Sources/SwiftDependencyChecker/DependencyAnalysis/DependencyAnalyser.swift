@@ -619,44 +619,53 @@ class DependencyAnalyser {
 
             if let dictionary = json as? [String: Any] {
                 if let object = dictionary["object"] as? [String: Any] {
-                    if let pins = object["pins"] as? [[String: Any]] {
-                        for pin in pins {
-                            var name: String?
-                            var version: String?
-                            var module: String?
-                            
-                            module = pin["package"] as? String
-                            let repoURL = pin["repositoryURL"] as? String
-                            
-                            if let url = repoURL {
-                                if let correctName = getNameFrom(url: url) {
-                                    name = correctName
-                                } else {
-                                    name = module
-                                }
-                            } else {
-                                name = module
-                            }
-                            
-                            
-                            if let state = pin["state"] as? [String: Any] {
-                                version = state["version"] as? String
-                            }
-                            
-                            let library = Library(name: name ?? "??", versionString: version ?? "")
-                            library.platform = "swiftpm"
-                            library.module = module
-                            Logger.log(.debug, "[i] Found library name: \(name), version: \(version)")
-                            
-                            libraries.append(library)
-                        }
-                    }
+                    libraries.append(contentsOf: getLibrariesFrom(dictionary: object))
                 }
+                libraries.append(contentsOf: getLibrariesFrom(dictionary: dictionary))
             }
         } catch {
             Logger.log(.error, "[!] Could not read swiftPM file \(path)")
         }
         
+        return libraries
+    }
+
+    private func getLibrariesFrom(dictionary: [String: Any]) -> [Library] {
+        var libraries: [Library] = []
+
+        if let pins = dictionary["pins"] as? [[String: Any]] {
+            for pin in pins {
+                var name: String?
+                var version: String?
+                var module: String?
+
+                module = pin["package"] as? String
+                let repoURL = pin["repositoryURL"] as? String
+
+                if let url = repoURL {
+                    if let correctName = getNameFrom(url: url) {
+                        name = correctName
+                    } else {
+                        name = module
+                    }
+                } else {
+                    name = module
+                }
+
+
+                if let state = pin["state"] as? [String: Any] {
+                    version = state["version"] as? String
+                }
+
+                let library = Library(name: name ?? "??", versionString: version ?? "")
+                library.platform = "swiftpm"
+                library.module = module
+                Logger.log(.debug, "[i] Found library name: \(name), version: \(version)")
+
+                libraries.append(library)
+            }
+        }
+
         return libraries
     }
     
@@ -773,6 +782,7 @@ class DependencyAnalyser {
         }
         
         return DependencyFile(type: .swiftPM, file: definitionPath, resolvedFile: resolvedPath, definitionFile: definitionPath)
+//        return DependencyFile(type: .swiftPM, file: resolvedPath, resolvedFile: resolvedPath, definitionFile: definitionPath)
     }
     
     func findPackageResolved(path: String) -> String? {
